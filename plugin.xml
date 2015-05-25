@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension point="org.eclipse.ui.views">
+      <view
+            name="Team File List"
+            icon="icons/tf_list.ico"
+            category="org.eclipse.team.ui"
+            class="com.beck.ep.team.views.TeamFileListView"
+            id="com.beck.ep.team.views.TeamFileListView">
+      </view>
+   </extension>
+
+</plugin>

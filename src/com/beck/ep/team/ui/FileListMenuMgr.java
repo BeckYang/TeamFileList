@@ -81,6 +81,13 @@ public class FileListMenuMgr extends MenuManager {//implements IMenuListener
 		return ret;
 	}
 	
+	public void saveList(String txt) {
+		String key = pref.get("selectedList", null);
+		if (key != null) {
+			pref.node("fileList").put(key, txt);
+		}
+	}
+	
 	private void saveAs() {
 		InputDialog dialog = new InputDialog(input.getShell(), "Save file list", "Input file list name", pref.get("selectedList", ""), null);//new RegexValidator("^[0-9,]+$","Please input number and separator by char ','"));
 		if (dialog.open() != InputDialog.OK) {

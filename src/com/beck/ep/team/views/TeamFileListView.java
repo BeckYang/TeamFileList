@@ -59,6 +59,7 @@ import org.eclipse.jface.action.*;
 import org.eclipse.jface.dialogs.InputDialog;
 import org.eclipse.ui.*;
 import org.eclipse.swt.SWT;
+import org.osgi.service.prefs.Preferences;
 
 import com.beck.ep.team.IFilePacker;
 import com.beck.ep.team.IListBuilder;
@@ -88,7 +89,8 @@ public class TeamFileListView extends ViewPart {
 	private Action ckBlockAction;
 	//private Action testAction;
 	private Action ckCheckFileAction;
-	IMenuManager loadListMgr;
+	private Action ckSaveWhenExitAction;
+	FileListMenuMgr loadListMgr;
 	IMenuManager customUnpackMgr;
 	private SourceViewer edFileList;
 	private IDocument fDoc;
@@ -194,6 +196,10 @@ public class TeamFileListView extends ViewPart {
 			IResource[] resa = (IResource[])event.data;
 			StringBuilder sb = new StringBuilder(256);
 			sb.append(_getText());
+			int len = sb.length();
+			if (len > 0 && sb.charAt(len-1) == '\n') {
+				sb.setLength(len-1);
+			}
 			for (int i = 0; i < resa.length; i++) {
 				IResource res = resa[i];
 				if (res.getProject().equals(currProj)) {
@@ -283,6 +289,7 @@ public class TeamFileListView extends ViewPart {
 		manager.add(customUnpackMgr);
 		manager.add(otherCfgAction);
 		manager.add(ckCheckFileAction);
+		manager.add(ckSaveWhenExitAction);
 		
 		IListBuilder lb = TeamListBuilder.newListBuilder(TeamListBuilder.REPOSITORY_ID_GIT);
 		if (lb != null) {
@@ -496,9 +503,23 @@ public class TeamFileListView extends ViewPart {
 			case 4: blockSelection(); break;
 			case 5: pack(TFMPlugin.getDefault().newFilePacker(TFMPlugin.PACKER_WAR_PATCH), "war patch",".zip"); break;
 			case 6: otherCfg(); break;
+			case 900: saveCfg(); break;
 			case 999: test(); break;
 			}
 		}
+	}
+	
+	public void dispose() {
+		if (TFMPlugin.getDefault().getPreferences().node("option").getBoolean("saveWhenExit", false)) {
+			loadListMgr.saveList(fDoc.get());
+		}
+		super.dispose();
+	}
+	
+	private void saveCfg() {
+		Preferences option = TFMPlugin.getDefault().getPreferences().node("option");
+		option.putBoolean("fileNotExist", ckCheckFileAction.isChecked());
+		option.putBoolean("saveWhenExit", ckSaveWhenExitAction.isChecked());
 	}
 	
 	private void makeActions(boolean newBlockSelection) {
@@ -524,8 +545,11 @@ public class TeamFileListView extends ViewPart {
 		
 		otherCfgAction = new XAction(6);
 		otherCfgAction.setText("set root folder for new zip...");
-		ckCheckFileAction = new XAction(-1, "show error when file not exists", IAction.AS_CHECK_BOX);
-		ckCheckFileAction.setChecked(TFMPlugin.getDefault().getPreferences().node("option").getBoolean("fileNotExist", true));
+		Preferences option = TFMPlugin.getDefault().getPreferences().node("option");
+		ckCheckFileAction = new XAction(900, "show error when file not exists", IAction.AS_CHECK_BOX);
+		ckCheckFileAction.setChecked(option.getBoolean("fileNotExist", true));
+		ckSaveWhenExitAction = new XAction(900, "save file list when exit", IAction.AS_CHECK_BOX);
+		ckSaveWhenExitAction.setChecked(option.getBoolean("saveWhenExit", false));
 		
 		if (TFMPlugin.getDefault().newFilePacker(TFMPlugin.PACKER_WAR_PATCH) != null) {
 			warPatchAction = new XAction(5);

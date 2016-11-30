@@ -24,6 +24,13 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.beck.ep.team.ui;
 
+import org.eclipse.core.resources.IWorkspaceRunnable;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
@@ -92,6 +99,44 @@ public class CustomUnpackMgr extends MenuManager {
 		XAction a = new XAction(name, zipFile, extractDir);
 		insertBefore(CFG_ACTION_ID, a);
 	}
+	//need to wait for project build/deploy job
+	private class ExtractJob extends Job {
+		private String zipFile;
+		private String extractDir;
+		private Job waitingJob;
+		public ExtractJob(String zipFile, String extractDir) {
+			super("extract ["+zipFile+"] to ["+extractDir+"]");
+			this.zipFile = zipFile;
+			this.extractDir = extractDir;
+		}
+		
+		public boolean shouldRun() {
+			if (waitingJob == null || waitingJob.getState() == Job.NONE) {
+				return true;
+			}
+			return false;
+		}
+		
+		protected IStatus run(IProgressMonitor monitor) {
+			if (monitor.isCanceled()) {
+				return Status.CANCEL_STATUS;
+			}
+			//TFMPlugin.info("extractZipTo --> waiting workspace action...", null);
+			try {
+				ResourcesPlugin.getWorkspace().run(new IWorkspaceRunnable() {
+					public void run(IProgressMonitor monitor) {
+					}
+				}, new NullProgressMonitor());
+			} catch (Exception e) {
+				TFMPlugin.info("extractZipTo --> waiting error", e);
+			}
+			if (monitor.isCanceled()){
+				return Status.CANCEL_STATUS;
+			}
+			extractZipTo(zipFile, extractDir);
+			return Status.OK_STATUS;
+		}
+	}
 
 	private class XAction extends Action {
 		private String zipFile;
@@ -107,7 +152,8 @@ public class CustomUnpackMgr extends MenuManager {
 				defineNew();
 				return;
 			}
-			extractZipTo(zipFile, extractDir);
+			//extractZipTo(zipFile, extractDir);
+			new ExtractJob(zipFile, extractDir).schedule();
 		}
 	}
 

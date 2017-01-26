@@ -31,6 +31,8 @@ import org.eclipse.jface.action.IContributionItem;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.dialogs.InputDialog;
+import org.eclipse.jface.viewers.LabelProvider;
+import org.eclipse.ui.dialogs.ElementListSelectionDialog;
 import org.osgi.service.prefs.Preferences;
 
 import com.beck.ep.team.TFMPlugin;
@@ -50,6 +52,7 @@ public class FileListMenuMgr extends MenuManager {//implements IMenuListener
 		//addMenuListener(this);
 		add(sp);
 		add(new XAction("&Save as...", 1));
+		add(new XAction("&Remove...", 2));
 		
 		String defCfgName = pref.get("selectedList", "");
 		try {
@@ -82,14 +85,14 @@ public class FileListMenuMgr extends MenuManager {//implements IMenuListener
 	}
 	
 	public void saveList(String txt) {
-		String key = pref.get("selectedList", null);
-		if (key != null) {
+		String key = pref.get("selectedList", "");
+		if (key.length() > 0) {
 			pref.node("fileList").put(key, txt);
 		}
 	}
 	
 	private void saveAs() {
-		InputDialog dialog = new InputDialog(input.getShell(), "Save file list", "Input file list name", pref.get("selectedList", ""), null);//new RegexValidator("^[0-9,]+$","Please input number and separator by char ','"));
+		InputDialog dialog = new InputDialog(input.getShell(), "Save file list", "Input name for file list", pref.get("selectedList", ""), null);//new RegexValidator("^[0-9,]+$","Please input number and separator by char ','"));
 		if (dialog.open() != InputDialog.OK) {
 			return;
 		}
@@ -119,6 +122,32 @@ public class FileListMenuMgr extends MenuManager {//implements IMenuListener
 		}
 	}
 	
+	private void deletePre() {
+		try {
+			String[] sa = pref.node("fileList").keys();
+			if (sa.length == 0){
+				return;
+			}
+			ElementListSelectionDialog dialog = new ElementListSelectionDialog(input.getShell(), new LabelProvider());
+			dialog.setTitle("Select file list that you want to remove");
+			dialog.setElements(sa);
+			dialog.setMessage("Type to filter by name:");
+			dialog.setMultipleSelection(true);
+			if (dialog.open() == ElementListSelectionDialog.OK) {
+				Object[] oa = dialog.getResult();
+				Preferences p = pref.node("fileList");
+				for (int i = 0; i < oa.length; i++) {
+					String key = (String)oa[i];
+					remove(key);
+					p.remove(key);
+				}
+				pref.put("selectedList", "");
+			}
+		} catch (Exception e) {
+			TFMPlugin.error("FileListMenuMgr deletePre", e);
+		}
+	}
+	
 	private class XAction extends Action {
 		private int type;
 		private XAction(String cfgName) {
@@ -131,9 +160,9 @@ public class FileListMenuMgr extends MenuManager {//implements IMenuListener
 			this.type = type;
 		}
 		public void run() {
-			if (type==1) {
-				saveAs();
-				return;
+			switch (type) {
+			case 1: saveAs(); return;
+			case 2: deletePre(); return;
 			}
 			if (!this.isChecked()) {
 				return;//for IAction.AS_RADIO_BUTTON, two event are fired - 1st obj.isChecked()=false, 2nd obj.iChecked()=true

@@ -34,7 +34,9 @@ import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
+import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.swt.SWT;
+import org.eclipse.ui.dialogs.ElementListSelectionDialog;
 import org.osgi.service.prefs.Preferences;
 
 import com.beck.ep.team.TFMPlugin;
@@ -53,7 +55,9 @@ public class CustomUnpackMgr extends MenuManager {
 		Separator sp = new Separator();
 		sp.setId(CFG_ACTION_ID);
 		add(sp);
-		add(new XAction("&Define new...", null, null));
+		add(new XAction("&Define new...", 1));
+		add(new XAction("&Modify/Save as...", 2));
+		add(new XAction("&Remove...", 3));
 		
 		try {
 			String[] sa = pref.childrenNames();
@@ -67,20 +71,72 @@ public class CustomUnpackMgr extends MenuManager {
 	}
 	
 	private void defineNew() {
-		DefineExtractDialog dialog = new DefineExtractDialog(fAccessText.getShell(), SWT.NONE);
+		try {
+			showEditDialog(null);
+		} catch (Exception e) {
+			TFMPlugin.error("showEditDialog error", e);
+		}
+	}
+	private void showEditDialog(Preferences currPref) throws Exception {
+		DefineExtractDialog dialog = new DefineExtractDialog(fAccessText.getShell(), SWT.RESIZE);
+		if (currPref != null) {
+			dialog.initDefault(currPref.name(), currPref.get("zipFile", null), currPref.get("extractDir", null));
+		}
 		if (dialog.open() == DefineExtractDialog.OK) {
 			String key = dialog.getName();
-			try {
-				boolean exists  = pref.nodeExists(key);
-				Preferences p = pref.node(key);
-				p.put("zipFile", dialog.getZipFile());
-				p.put("extractDir", dialog.getExtractDir());
-				if (!exists) {
-					addItems(key, dialog.getZipFile(), dialog.getExtractDir());
-				}
-			} catch (Exception e) {
-				TFMPlugin.error("defineNew error", e);
+			boolean exists  = pref.nodeExists(key);
+			Preferences p = pref.node(key);
+			p.put("zipFile", dialog.getZipFile());
+			p.put("extractDir", dialog.getExtractDir());
+			if (!exists) {
+				addItems(key, dialog.getZipFile(), dialog.getExtractDir());
 			}
+		}
+	}
+	private void modifyPre() {
+		try {
+			Preferences p = selectPreferences("Select setting that you want to modify");
+			if (p != null) {
+				showEditDialog(p);
+			}
+		} catch (Exception e) {
+			TFMPlugin.error("modifyPre error", e);
+		}
+	}
+	private void deletePre() {
+		try {
+			Preferences p = selectPreferences("Select setting that you want to remove");
+			if (p != null) {
+				remove(p.name());
+				p.removeNode();
+			}
+		} catch (Exception e) {
+			TFMPlugin.error("deletePre error", e);
+		}
+	}
+	private Preferences selectPreferences(String title) throws Exception {
+		String[] sa = pref.childrenNames();
+		if (sa.length == 0){
+			return null;
+		}
+		Preferences[] pa = new Preferences[sa.length];
+		for (int i = 0; i < pa.length; i++) {
+			pa[i] = pref.node(sa[i]);
+		}
+		ElementListSelectionDialog dialog = new ElementListSelectionDialog(fAccessText.getShell(), new PLP());
+		dialog.setTitle(title);
+		dialog.setElements(pa);
+		dialog.setMessage("Type to filter by name:");
+		dialog.setMultipleSelection(false);
+		if (dialog.open() == ElementListSelectionDialog.OK) {
+			return (Preferences)dialog.getResult()[0];
+		}
+		return null;
+	}
+	private static class PLP extends LabelProvider {
+		public String getText(Object element) {
+			Preferences p = (Preferences)element;
+			return p.name()+" - extract ["+p.get("zipFile", "")+"] to ["+p.get("extractDir", "")+"]";
 		}
 	}
 	
@@ -96,32 +152,24 @@ public class CustomUnpackMgr extends MenuManager {
 	}
 	
 	private void addItems(String name, String zipFile, String extractDir) {
-		XAction a = new XAction(name, zipFile, extractDir);
+		XAction a = new XAction(name, 0);
 		insertBefore(CFG_ACTION_ID, a);
 	}
-	//need to wait for project build/deploy job
+	
 	private class ExtractJob extends Job {
 		private String zipFile;
 		private String extractDir;
-		private Job waitingJob;
 		public ExtractJob(String zipFile, String extractDir) {
 			super("extract ["+zipFile+"] to ["+extractDir+"]");
 			this.zipFile = zipFile;
 			this.extractDir = extractDir;
 		}
 		
-		public boolean shouldRun() {
-			if (waitingJob == null || waitingJob.getState() == Job.NONE) {
-				return true;
-			}
-			return false;
-		}
-		
 		protected IStatus run(IProgressMonitor monitor) {
 			if (monitor.isCanceled()) {
 				return Status.CANCEL_STATUS;
 			}
-			//TFMPlugin.info("extractZipTo --> waiting workspace action...", null);
+			fAccessText.showMessage(IAccessText.MSG_TYPE_ERROR, "Waiting workspace action complete...");
 			try {
 				ResourcesPlugin.getWorkspace().run(new IWorkspaceRunnable() {
 					public void run(IProgressMonitor monitor) {
@@ -139,21 +187,23 @@ public class CustomUnpackMgr extends MenuManager {
 	}
 
 	private class XAction extends Action {
-		private String zipFile;
-		private String extractDir;
-		private XAction(String name, String zipFile, String extractDir) {
+		private int type;
+		private XAction(String name, int type) {
 			super(name);
-			setId(name);
-			this.zipFile = zipFile;
-			this.extractDir = extractDir;
+			this.type = type;
+			if (type == 0) {
+				setId(name);
+			}
 		}
 		public void run() {
-			if (zipFile == null || extractDir == null) {
-				defineNew();
-				return;
+			switch (type) {
+			case 1: defineNew(); return;
+			case 2: modifyPre(); return;
+			case 3: deletePre(); return;
 			}
+			Preferences p = pref.node(getId());
 			//extractZipTo(zipFile, extractDir);
-			new ExtractJob(zipFile, extractDir).schedule();
+			new ExtractJob(p.get("zipFile", null), p.get("extractDir", null)).schedule();
 		}
 	}
 

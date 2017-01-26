@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Team File List
 Bundle-SymbolicName: com.beck.ep.team;singleton:=true
-Bundle-Version: 1.0.0.0
+Bundle-Version: 1.1.0.0
 Bundle-Activator: com.beck.ep.team.TFMPlugin
 Bundle-Vendor: Beck Yang
 Require-Bundle: org.eclipse.ui,

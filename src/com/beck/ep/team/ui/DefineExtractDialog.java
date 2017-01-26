@@ -60,10 +60,17 @@ public class DefineExtractDialog extends StatusDialog {
 	 */
 	public DefineExtractDialog(Shell parent, int style) {
 		super(parent);
+		setShellStyle(getShellStyle() | style);
 		name = "";
 		setTitle("Define Unpack setting");
 		validate();
 		setHelpAvailable(false);
+	}
+	
+	public void initDefault(String name, String zipFile, String extractDir) {
+		this.name = name;
+		this.zipFile = zipFile;
+		this.extractDir = extractDir;
 	}
 
 	/**
@@ -101,6 +108,16 @@ public class DefineExtractDialog extends StatusDialog {
 		final Button btnSelectFolder = new Button(container, SWT.NONE);
 		btnSelectFolder.setImage(PlatformUI.getWorkbench().getSharedImages().getImage(ISharedImages.IMG_OBJ_FOLDER));
 		
+		if (name != null) {
+			edName.setText(name);
+		}
+		if (zipFile != null) {
+			edZipFile.setText(zipFile);
+		}
+		if (extractDir != null) {
+			edExtractDir.setText(extractDir);
+		}
+		
 		Listener handler = new Listener() {
 			public void handleEvent(Event event) {
 				Object w = event.widget;
@@ -117,7 +134,7 @@ public class DefineExtractDialog extends StatusDialog {
 		btnSelectZip.addListener(SWT.Selection, handler);
 		edName.addListener(SWT.Modify, handler);
 		edExtractDir.addListener(SWT.Modify, handler);
-		edZipFile.addListener(SWT.Selection, handler);
+		edZipFile.addListener(SWT.Modify, handler);
 		return container;
 	}
 	

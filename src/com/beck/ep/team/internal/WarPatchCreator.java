@@ -36,8 +36,10 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
@@ -110,10 +112,26 @@ public class WarPatchCreator implements IFilePacker {
 						}
 						IType[] czs = ((ICompilationUnit)ele).getAllTypes();
 						for (int i = 0; i < czs.length; i++) {
-							IPath cp = packagePath.append(czs[i].getTypeQualifiedName()+".class");
+							String qname = czs[i].getTypeQualifiedName(); 
+							IPath cp = packagePath.append(qname+".class");
 							IFile fclazz = project.getFile(outputDir.append(cp));
-							folder.setLength(folderLen);
-							zipFile.addStream(folder.append(cp.toString()).toString(), fclazz.getContents());
+							if (fclazz.isAccessible()) {
+								folder.setLength(folderLen);
+								zipFile.addStream(folder.append(cp.toString()).toString(), fclazz.getContents());
+								int anonymousCnt = 1;
+								IFile anonymousCZ = null;
+								do {//inner class...
+									cp = packagePath.append(qname+"$"+anonymousCnt+".class");
+									anonymousCnt++;
+									anonymousCZ = project.getFile(outputDir.append(cp));
+									if (anonymousCZ.isAccessible()) {
+										folder.setLength(folderLen);
+										zipFile.addStream(folder.append(cp.toString()).toString(), anonymousCZ.getContents());
+									} else {
+										anonymousCZ = null;
+									}
+								} while (anonymousCZ != null);
+							}
 						}
 						file = null;
 					}

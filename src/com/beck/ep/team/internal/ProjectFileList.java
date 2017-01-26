@@ -27,6 +27,7 @@ package com.beck.ep.team.internal;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -43,7 +44,7 @@ public class ProjectFileList implements IRunnableWithProgress {
 	IProject project;
 	ArrayList<IFile> files;
 	Map<File, String> jfiles;
-	Pattern ptn = Pattern.compile("[\r\n]+");
+	public static final Pattern ptn = Pattern.compile("[\r\n]+");
 
 	public ProjectFileList(IProject project) {
 		this.project = project;
@@ -113,4 +114,31 @@ public class ProjectFileList implements IRunnableWithProgress {
 		monitor.done();
 	}
 
+	public static String sort(String text) {
+		String[] sa = ptn.split(text);
+		if (sa.length > 1) {
+			StringBuilder sb = new StringBuilder(text.length());
+			int z = sa[0].length();
+			String newLine = text.substring(z, text.indexOf(sa[1], z));
+			String suffix = sa[sa.length-1];
+			z = text.lastIndexOf(suffix) + suffix.length();
+			if (text.length() == z) {
+				suffix = null;
+			} else {
+				suffix = sb.append(text, z, text.length()).toString();
+				sb.setLength(0);
+			}
+			Arrays.sort(sa);
+			z = sa.length-1;
+			for (int i = 0; i < z; i++) {
+				sb.append(sa[i]).append(newLine);
+			}
+			sb.append(sa[z]);
+			if (suffix != null) {
+				sb.append(suffix);
+			}
+			return sb.toString();
+		}
+		return text;
+	}
 }

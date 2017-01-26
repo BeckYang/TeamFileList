@@ -86,6 +86,7 @@ public class TeamFileListView extends ViewPart {
 	private Action unzipAction;
 	private Action warPatchAction;
 	private Action otherCfgAction;
+	private Action sortAction;
 	private Action ckBlockAction;
 	//private Action testAction;
 	private Action ckCheckFileAction;
@@ -220,8 +221,10 @@ public class TeamFileListView extends ViewPart {
 				break;
 			case IAccessText.MSG_TYPE_INFO:
 				showMessage(message);
+				break;
 			case IAccessText.MSG_TYPE_ERROR:
 				showError(message);
+				break;
 			}
 		}
 	}
@@ -303,6 +306,7 @@ public class TeamFileListView extends ViewPart {
 			manager.add(ckBlockAction);
 		}
 		//manager.add(testAction);//TODO for debug
+		manager.add(sortAction);
 		manager.add(new Separator());
 		manager.add(unzipAction);
 		manager.add(zipAction);
@@ -503,6 +507,7 @@ public class TeamFileListView extends ViewPart {
 			case 4: blockSelection(); break;
 			case 5: pack(TFMPlugin.getDefault().newFilePacker(TFMPlugin.PACKER_WAR_PATCH), "war patch",".zip"); break;
 			case 6: otherCfg(); break;
+			case 7: sortList(); break;
 			case 900: saveCfg(); break;
 			case 999: test(); break;
 			}
@@ -566,11 +571,21 @@ public class TeamFileListView extends ViewPart {
 			} catch (Exception e) {
 			}
 		}
+		sortAction = new XAction(7);
+		sortAction.setText("Sort file list");
+		try {
+			sortAction.setImageDescriptor(
+					ImageDescriptor.createFromURL(new java.net.URL("platform:/plugin/org.eclipse.jdt.ui/icons/full/dlcl16/alphab_sort_co.gif")));
+		} catch (Exception e) {
+		}
 		
 		/*testAction = new XAction(999);
 		testAction.setText("test...");
 		testAction.setImageDescriptor(PlatformUI.getWorkbench().getSharedImages().
 				getImageDescriptor(ISharedImages.IMG_OBJ_ELEMENT));*/
+	}
+	private void sortList() {
+		_setText(ProjectFileList.sort(_getText()));
 	}
 	
 	private void showError(String message) {
